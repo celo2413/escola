@@ -1,0 +1,17 @@
+<?php
+declare(strict_types=1);
+function registerTime(array $u,string $action): array {
+    if($u['cargo']!=='professor')fail('Ponto reservado ao professor.',403);$tid=teacherId($u);$today=date('Y-m-d');$now=date('Y-m-d H:i:s');
+    return transaction(function()use($tid,$today,$now,$action){$p=one('SELECT * FROM pontos_professores WHERE professor_id=? AND data=? FOR UPDATE',[$tid,$today]);
+        if($action==='entry'){if($p)fail('Entrada já registrada hoje.',409);$teacher=one('SELECT horario_previsto FROM professores WHERE id=?',[$tid]);$status=$teacher['horario_previsto']&&date('H:i:s')>$teacher['horario_previsto']?'Atraso':'Normal';$id=insert('pontos_professores',['professor_id'=>$tid,'data'=>$today,'entrada'=>$now,'status'=>$status]);}
+        else{if(!$p)fail('Registre a entrada primeiro.');if($p['saida'])fail('Saída já registrada.',409);$id=(string)$p['id'];updateRow('pontos_professores',$id,['saida'=>$now]);}
+        audit('PONTO_REGISTRADO','pontos_professores',$id,$action);return ['id'=>$id,'message'=>$action==='entry'?'Entrada registrada.':'Saída registrada.'];});
+}
+function requestAdjustment(array $u,array $b): array {
+    if($u['cargo']!=='professor')fail('Ação reservada ao professor.',403);required($b,['date','entry','reason']);$date=validDate($b['date']);if($date>date('Y-m-d'))fail('Data futura.');$tid=teacherId($u);$p=one('SELECT * FROM pontos_professores WHERE professor_id=? AND data=?',[$tid,$date]);if(!$p)fail('Não existe ponto registrado nesta data.');$entry=$date.' '.validTime($b['entry']);$exit=empty($b['exit'])?null:$date.' '.validTime($b['exit']);if($exit&&$exit<$entry)fail('Saída anterior à entrada.');
+    return transaction(function()use($p,$tid,$entry,$exit,$b){if(one("SELECT id FROM solicitacoes_ajuste_ponto WHERE ponto_id=? AND status='pendente'",[$p['id']]))fail('Existe ajuste pendente para este ponto.');$id=insert('solicitacoes_ajuste_ponto',['ponto_id'=>$p['id'],'professor_id'=>$tid,'entrada_solicitada'=>$entry,'saida_solicitada'=>$exit,'motivo'=>textValue($b['reason'])]);audit('AJUSTE_SOLICITADO','solicitacoes_ajuste_ponto',$id);notify(managers(),'Solicitação de ajuste de ponto','time');return ['id'=>$id];});
+}
+function reviewAdjustment(array $u,string $id,array $b): array {
+    if($u['cargo']!=='diretor')fail('Somente a direção analisa ajustes.',403);$status=choice($b['status']??'',['Aprovada','Reprovada']);if($status==='Reprovada')required($b,['reason']);
+    return transaction(function()use($u,$id,$b,$status){$a=one('SELECT * FROM solicitacoes_ajuste_ponto WHERE id=? FOR UPDATE',[validId($id)]);if(!$a||$a['status']!=='pendente')fail('Solicitação inexistente ou já analisada.',409);$p=one('SELECT * FROM pontos_professores WHERE id=? FOR UPDATE',[$a['ponto_id']]);if($status==='Aprovada')updateRow('pontos_professores',(string)$a['ponto_id'],['entrada'=>$a['entrada_solicitada'],'saida'=>$a['saida_solicitada'],'status'=>'Ajustado']);updateRow('solicitacoes_ajuste_ponto',$id,['status'=>$status==='Aprovada'?'aprovado':'rejeitado','analisado_por'=>$u['id'],'analisado_em'=>date('Y-m-d H:i:s'),'parecer'=>textValue($b['reason']??'')]);audit('PONTO_AJUSTADO','pontos_professores',(string)$a['ponto_id'],json_encode(['decisao'=>$status,'anterior'=>$p,'solicitacao'=>$id]));$teacher=one('SELECT usuario_id FROM professores WHERE id=?',[$a['professor_id']]);notify([$teacher['usuario_id']],'Ajuste de ponto analisado','time');return ['ok'=>true];});
+}

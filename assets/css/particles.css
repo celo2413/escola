@@ -1,0 +1,5 @@
+/* Decorative layer: never intercepts a click or covers the portal content. */
+#particle-network { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+#app { position: relative; z-index: 1; }
+.auth-page, .public-page { background: transparent; }
+@media print { #particle-network { display: none; } }

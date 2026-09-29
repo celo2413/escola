@@ -1,0 +1,39 @@
+/* Logos originais por tema, preservadas sem recortes, filtros ou distorção. */
+.brand img {
+  display: block;
+  width: 140px;
+  height: auto;
+  max-width: 100%;
+  max-height: none;
+  object-fit: contain;
+  object-position: center;
+}
+.sidebar .brand {
+  justify-content: center;
+  padding: 18px 24px 4px;
+  flex-shrink: 0;
+}
+.sidebar .brand img { width: 112px; height: auto; }
+.sidebar-caption { text-align: center; padding-bottom: 14px; }
+.auth-card > .brand { margin-bottom: 22px; }
+.auth-card .brand img {
+  width: 152px;
+  height: auto;
+  max-width: 100%;
+  max-height: none;
+}
+.report-header .brand img { width: 100px; height: auto; }
+.public-header .brand img { width: 80px; height: auto; }
+.status-page > .brand img { width: 120px; height: auto; }
+@media (max-width: 580px) {
+  .auth-card .brand img { width: 132px; height: auto; }
+  .public-header .brand img { width: 68px; height: auto; }
+  .report-header .brand img { width: 82px; height: auto; }
+}
+@media print {
+  .report-header .brand img { width: 100px; height: auto; }
+}
+
+/* Hide the previous bitmap while a new theme image is loading. */
+.brand img[data-logo-pending] { visibility: hidden; }
+[data-theme=dark] .brand img[data-theme-logo] { border-radius: 4px; background: #132330; }

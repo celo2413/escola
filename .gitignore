@@ -1,0 +1,10 @@
+node_modules/
+storage/sessions/*
+!storage/sessions/.gitkeep
+tests/*.log
+.env
+config/mail.local.json
+storage/backups/
+storage/phpmailer-release.json
+storage/*.log
+.env.*
